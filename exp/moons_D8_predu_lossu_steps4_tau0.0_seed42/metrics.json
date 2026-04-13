@@ -1,0 +1,11 @@
+{
+  "mmd_2d": 0.04703819751739502,
+  "n_generated": 200,
+  "n_true": 200,
+  "pred_space": "u",
+  "loss_space": "u",
+  "steps": 4,
+  "obs_dim": 8,
+  "tau": 0.0,
+  "dataset": "moons"
+}

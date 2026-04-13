@@ -1,0 +1,11 @@
+{
+  "mmd_2d": 0.325264573097229,
+  "n_generated": 200,
+  "n_true": 200,
+  "pred_space": "x",
+  "loss_space": "x",
+  "steps": 1,
+  "obs_dim": 8,
+  "tau": 0.0,
+  "dataset": "8gaussians"
+}
