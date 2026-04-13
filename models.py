@@ -1,10 +1,13 @@
 """
-models.py — Simple MLP for predicting in different spaces.
+models.py — Model definitions for different prediction spaces.
 
-Input:  xt (B, D) concatenated with time embedding (B, time_emb_dim) -> (B, D + time_emb_dim)
-Output: (B, D) — interpreted as pred_space prediction
+Two distinct model classes with different input signatures:
 
-Time embedding: sinusoidal + linear projection (simple but effective for MLPs).
+  StandardMLP:  input = (z_t, t)      for pred_space in {x, eps, v}
+  UModel:       input = (z_t, r, t)   for pred_space = u
+
+The distinction is preserved throughout training and sampling.
+Do NOT use UModel for x/eps/v-pred or StandardMLP for u-pred.
 """
 import torch
 import torch.nn as nn
@@ -13,76 +16,120 @@ import math
 
 class SinusoidalTimeEmbedding(nn.Module):
     """
-    Maps scalar t in [0,1] to a vector of dimension `emb_dim`.
-    Uses sinusoidal frequencies, then a small linear layer.
+    Maps a scalar t in [0,1] to a vector of dimension emb_dim.
+
+    Uses sinusoidal frequencies (like positional encoding),
+    followed by a learned linear projection.
     """
     def __init__(self, emb_dim: int):
         super().__init__()
         assert emb_dim % 2 == 0, "emb_dim must be even"
-        self.emb_dim = emb_dim
         half = emb_dim // 2
-        # Fixed frequency bands
-        freqs = torch.exp(-math.log(10000) * torch.arange(half).float() / half)
-        self.register_buffer("freqs", freqs)  # (half,)
-        self.proj = nn.Linear(emb_dim, emb_dim)
+        # Log-spaced frequency bands, fixed (not learned)
+        freqs = torch.exp(
+            -math.log(10000.0) * torch.arange(half, dtype=torch.float32) / half
+        )
+        self.register_buffer("freqs", freqs)   # (half,)
+        self.proj = nn.Sequential(
+            nn.Linear(emb_dim, emb_dim),
+            nn.SiLU(),
+        )
 
     def forward(self, t: torch.Tensor) -> torch.Tensor:
         """
-        t: (B,) or (B, 1) — values in [0, 1]
+        t: (B,) or (B, 1) in [0, 1]
         Returns: (B, emb_dim)
         """
         if t.dim() == 2:
-            t = t.squeeze(1)
-        # Scale t to [0, 1000] range for sinusoidal embedding
-        t_scaled = t * 1000.0  # (B,)
-        args = t_scaled.unsqueeze(1) * self.freqs.unsqueeze(0)  # (B, half)
+            t = t.squeeze(1)                        # (B,)
+        t_scaled = t * 1000.0                       # scale to [0, 1000]
+        args = t_scaled[:, None] * self.freqs[None] # (B, half)
         emb = torch.cat([torch.sin(args), torch.cos(args)], dim=1)  # (B, emb_dim)
-        return self.proj(emb)
+        return self.proj(emb)                       # (B, emb_dim)
 
 
-class MLP(nn.Module):
+class StandardMLP(nn.Module):
     """
-    Simple MLP that takes (xt, t) and outputs a D-dimensional prediction.
+    MLP for pred_space in {x, eps, v}.
+
+    Input:  concat(z_t, embed(t))  -- shape (B, obs_dim + time_emb_dim)
+    Output: (B, obs_dim)
 
     Architecture:
-      1. Embed time t -> time_emb
-      2. Input = concat(xt, time_emb)  -- shape (B, D + time_emb_dim)
-      3. Hidden layers: n_layers - 1 layers of (Linear -> SiLU)
-      4. Output: Linear -> (B, D)
-
-    No skip connections, no normalization -- keeps it simple.
+      [z_t || t_emb] -> Linear -> SiLU -> ... -> Linear -> output
     """
     def __init__(self, obs_dim: int, hidden_dim: int, n_layers: int, time_emb_dim: int):
         super().__init__()
         self.obs_dim = obs_dim
-        self.time_emb = SinusoidalTimeEmbedding(time_emb_dim)
+        self.t_emb = SinusoidalTimeEmbedding(time_emb_dim)
 
-        input_dim = obs_dim + time_emb_dim
+        in_dim = obs_dim + time_emb_dim
         layers = []
-        in_dim = input_dim
-        for i in range(n_layers - 1):
-            layers.append(nn.Linear(in_dim, hidden_dim))
-            layers.append(nn.SiLU())
+        for _ in range(n_layers - 1):
+            layers += [nn.Linear(in_dim, hidden_dim), nn.SiLU()]
             in_dim = hidden_dim
         layers.append(nn.Linear(in_dim, obs_dim))
         self.net = nn.Sequential(*layers)
 
-    def forward(self, xt: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+    def forward(self, z_t: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
         """
-        xt: (B, D)
-        t:  (B,) or (B, 1) -- values in [0, 1]
-        Returns: (B, D)
+        z_t: (B, obs_dim)
+        t:   (B, 1) or (B,) -- values in [0, 1]
+        Returns: (B, obs_dim)
         """
-        if t.dim() == 1:
-            t_1d = t
-        else:
-            t_1d = t.squeeze(1)
-        t_emb = self.time_emb(t_1d)           # (B, time_emb_dim)
-        h = torch.cat([xt, t_emb], dim=1)     # (B, D + time_emb_dim)
+        t_emb = self.t_emb(t)                    # (B, time_emb_dim)
+        h = torch.cat([z_t, t_emb], dim=1)       # (B, obs_dim + time_emb_dim)
         return self.net(h)
 
 
-def build_model(obs_dim: int, hidden_dim: int, n_layers: int,
-                time_emb_dim: int) -> MLP:
-    return MLP(obs_dim=obs_dim, hidden_dim=hidden_dim,
-               n_layers=n_layers, time_emb_dim=time_emb_dim)
+class UModel(nn.Module):
+    """
+    MLP for pred_space = u (MeanFlow).
+
+    Input:  concat(z_t, embed(r), embed(t))  -- shape (B, obs_dim + 2*time_emb_dim)
+    Output: (B, obs_dim)
+
+    Both r and t are embedded separately to give the model full information
+    about both the current time and the target time.
+
+    This model MUST be called with (z_t, r, t) -- never with just (z_t, t).
+    """
+    def __init__(self, obs_dim: int, hidden_dim: int, n_layers: int, time_emb_dim: int):
+        super().__init__()
+        self.obs_dim = obs_dim
+        self.r_emb = SinusoidalTimeEmbedding(time_emb_dim)
+        self.t_emb = SinusoidalTimeEmbedding(time_emb_dim)
+
+        in_dim = obs_dim + 2 * time_emb_dim
+        layers = []
+        for _ in range(n_layers - 1):
+            layers += [nn.Linear(in_dim, hidden_dim), nn.SiLU()]
+            in_dim = hidden_dim
+        layers.append(nn.Linear(in_dim, obs_dim))
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, z_t: torch.Tensor, r: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+        """
+        z_t: (B, obs_dim)
+        r:   (B, 1) or (B,) -- "from" time (target)
+        t:   (B, 1) or (B,) -- "current" time
+        Returns: (B, obs_dim) -- predicted average velocity u(z_t, r, t)
+        """
+        r_emb = self.r_emb(r)                    # (B, time_emb_dim)
+        t_emb = self.t_emb(t)                    # (B, time_emb_dim)
+        h = torch.cat([z_t, r_emb, t_emb], dim=1)
+        return self.net(h)
+
+
+def build_model(
+    pred_space: str,
+    obs_dim: int,
+    hidden_dim: int,
+    n_layers: int,
+    time_emb_dim: int,
+) -> nn.Module:
+    """Factory: return the right model for the given pred_space."""
+    if pred_space == "u":
+        return UModel(obs_dim, hidden_dim, n_layers, time_emb_dim)
+    else:
+        return StandardMLP(obs_dim, hidden_dim, n_layers, time_emb_dim)

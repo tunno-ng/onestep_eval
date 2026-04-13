@@ -1,0 +1,19 @@
+{
+  "dataset": "8gaussians",
+  "n_train": 50000,
+  "n_eval": 2000,
+  "obs_dim": 16,
+  "latent_dim": 2,
+  "tau": 0.0,
+  "pred_space": "v",
+  "loss_space": "v",
+  "steps": 1,
+  "hidden_dim": 256,
+  "n_layers": 4,
+  "time_emb_dim": 32,
+  "n_iters": 20000,
+  "batch_size": 512,
+  "lr": 0.001,
+  "seed": 42,
+  "exp_dir": "exp"
+}

@@ -1,0 +1,199 @@
+{
+  "main": {
+    "id": "6b8b7dc3ba343963",
+    "type": "split",
+    "children": [
+      {
+        "id": "5e24300a3a36f8cf",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "9a46d2763f899ed1",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "README.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "README"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "78b1638c7b7628b6",
+    "type": "split",
+    "children": [
+      {
+        "id": "cba4480f7532fba3",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6768e0c2ded98c84",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "ファイルエクスプローラ"
+            }
+          },
+          {
+            "id": "9b385d1b27431185",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "検索"
+            }
+          },
+          {
+            "id": "82462730274ef8a0",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "ブックマーク"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "11c6dcbc1b1cbee8",
+    "type": "split",
+    "children": [
+      {
+        "id": "425d90e11c52f127",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "325a894b31945b96",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "README.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "READMEへのバックリンク"
+            }
+          },
+          {
+            "id": "cd20f2395c3fe9e6",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "README.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "READMEからのアウトゴーイングリンク"
+            }
+          },
+          {
+            "id": "388909373d613b80",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "タグ"
+            }
+          },
+          {
+            "id": "2d9800c360aa9c26",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "すべてのプロパティ"
+            }
+          },
+          {
+            "id": "fc9ec62d8f14d927",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "README.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "READMEのアウトライン"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:クイックスイッチャーを開く": false,
+      "graph:グラフビューを開く": false,
+      "canvas:新規キャンバスを作成": false,
+      "daily-notes:今日のデイリーノートを開く": false,
+      "templates:テンプレートを挿入": false,
+      "command-palette:コマンドパレットを開く": false,
+      "bases:新規ベースを作成": false
+    }
+  },
+  "active": "9a46d2763f899ed1",
+  "lastOpenFiles": [
+    "exp/8gaussians_D16_predv_lossv_steps1_tau0.0_seed42/config.json",
+    "exp/8gaussians_D16_predv_lossv_steps1_tau0.0_seed42",
+    "exp/8gaussians_D16_predeps_lossv_steps1_tau0.0_seed42/samples_overlay.png",
+    "exp/8gaussians_D16_predeps_lossv_steps1_tau0.0_seed42/samples_side_by_side.png",
+    "exp/8gaussians_D16_predeps_lossv_steps1_tau0.0_seed42/metrics.json",
+    "exp/8gaussians_D16_predeps_lossv_steps1_tau0.0_seed42/gen_samples_2d.npy",
+    "exp/8gaussians_D16_predeps_lossv_steps1_tau0.0_seed42/gen_samples_D.npy",
+    "exp/8gaussians_D16_predeps_lossv_steps1_tau0.0_seed42/model.pt",
+    "exp/8gaussians_D16_predeps_lossv_steps1_tau0.0_seed42/loss_curve.png",
+    "exp/8gaussians_D16_predeps_lossv_steps1_tau0.0_seed42/loss_history.json"
+  ]
+}

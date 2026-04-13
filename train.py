@@ -1,15 +1,13 @@
 """
 train.py — Training loop.
 
-Given a model, dataset, and config, runs the training loop and returns:
-  - trained model
-  - list of (iteration, loss) tuples
+Dispatches to the right sampling logic (r,t) vs (t) based on pred_space.
 """
 import torch
 import torch.optim as optim
 
 from datasets import TensorDataset2D
-from paths import sample_noise, interpolate
+from paths import sample_noise, interpolate, sample_t, sample_r_t
 from losses import compute_loss
 
 
@@ -28,35 +26,46 @@ def train(
     """
     Training loop.
 
+    For pred_space in {x, eps, v}: samples (x, eps, t) per batch.
+    For pred_space == u: samples (x, eps, r, t) per batch.
+
     Returns: list of (iter, loss_val) for plotting.
     """
     model = model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr)
-
     loss_history = []
+
+    is_u = (pred_space == "u")
 
     for it in range(1, n_iters + 1):
         model.train()
         optimizer.zero_grad()
 
-        # Sample batch of clean data in R^D
-        x0 = dataset.sample_batch(batch_size, device)  # (B, D)
+        # --- sample clean data ---
+        x = dataset.sample_batch(batch_size, device)   # (B, D)
 
-        # Sample noise in R^D
-        x1 = sample_noise(x0.shape, device)            # (B, D)
+        # --- sample noise ---
+        eps = sample_noise(x.shape, device)             # (B, D)
 
-        # Sample time
-        t = torch.rand(batch_size, 1, device=device)   # (B, 1) in [0, 1]
+        # --- sample time(s) ---
+        if is_u:
+            r, t = sample_r_t(batch_size, device)      # (B,1), (B,1)
+        else:
+            t = sample_t(batch_size, device)            # (B, 1)
+            r = None
 
-        # Compute noisy sample xt
-        xt = interpolate(x0, x1, t)                    # (B, D)
+        # --- interpolate ---
+        z_t = interpolate(x, eps, t)                   # (B, D)
 
-        # Forward pass: predict in pred_space
-        pred = model(xt, t)                             # (B, D)
-
-        # Compute loss in loss_space
-        loss = compute_loss(pred, pred_space, loss_space,
-                            x0, x1, xt, t, tau)
+        # --- loss ---
+        loss = compute_loss(
+            net=model,
+            z_t=z_t, t=t, x=x, eps=eps,
+            pred_space=pred_space,
+            loss_space=loss_space,
+            tau=tau,
+            r=r,
+        )
 
         loss.backward()
         optimizer.step()
