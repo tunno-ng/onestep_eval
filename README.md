@@ -162,6 +162,84 @@ Checks: transform round-trips, u-pred JVP shape and backprop, time sampling boun
 
 ---
 
+## How Methods Are Compared
+
+**Raw training loss is NOT directly comparable across different `loss_space` choices.**  
+v-loss and x-loss have different scales and meanings. Comparing them directly is misleading.
+
+Instead, all methods are compared in **common evaluation spaces**:
+
+| Metric | Description | Comparable? |
+|---|---|---|
+| `val_x_mse` | E[‖x_hat − x‖²] in common x-space | **Yes — primary** |
+| `val_v_mse` | E[‖v_hat − v‖²] in common v-space | **Yes — primary** |
+| MMD (2D) | Distribution distance of generated samples | **Yes — primary** |
+| Scatter plots | Visual quality of generated samples | **Yes — primary** |
+| train_loss | Optimization diagnostic within one method | No — diagnostic only |
+
+**Presentation priority** (followed by all plots and tables):
+1. Side-by-side scatter plots (generated vs real in 2D)
+2. `val_x_mse`
+3. `val_v_mse`
+4. MMD
+5. Training loss curves (secondary, labeled as diagnostic)
+
+For u-pred specifically: `val_x_mse` and `val_v_mse` use the direct inference formula `x_hat = z_t − t·u_θ(z_t, r=0, t)`, not the training-time compound V_θ.
+
+---
+
+## Generated Artifacts
+
+**Per run** (in `exp/<name>/`):
+
+| File | Description | Priority |
+|---|---|---|
+| `eval_summary.png` | Scatter + val MSE curves + MMD text | **Primary** |
+| `samples_side_by_side.png` | Real vs generated scatter | Primary |
+| `training_curves.png` | val MSE (top panel) + train loss (bottom) | Secondary |
+| `trajectory.png` | Multi-step trajectory (if steps > 1) | Optional |
+| `metrics.json` | All metrics: val_x_mse, val_v_mse, mmd, train_loss | — |
+| `val_x_mse_history.json` | Per-checkpoint val x-MSE | — |
+| `val_v_mse_history.json` | Per-checkpoint val v-MSE | — |
+| `gen_samples_2d.npy` | Generated samples projected to 2D | — |
+| `true_samples_2d.npy` | True eval samples in 2D | — |
+
+**Cross-run** (in `compare_out/<name>/`):
+
+| File | Description | Priority |
+|---|---|---|
+| `comparison_grid.png` | Side-by-side scatter: all methods in one figure | **Primary** |
+| `metric_vs_{x_key}.png` | val_x_mse, val_v_mse, MMD vs obs_dim / tau / steps | Primary |
+| `summary.csv` | Table: all methods, metrics in priority order | Primary |
+
+---
+
+## Cross-Run Comparison Commands
+
+```bash
+# Group A: Tier 1 (v-loss), all pred_spaces
+python compare.py --parent exp --filter "8gaussians_D16" --filter2 "lossv_steps1" \
+    --x_key pred_space --plot_grids --out_dir compare_out/groupA
+
+# Group B: Tier 2 (x-loss), all pred_spaces
+python compare.py --parent exp --filter "8gaussians_D16" --filter2 "lossx_steps1" \
+    --x_key pred_space --plot_grids --out_dir compare_out/groupB
+
+# Obs-dim scaling, grouped by pred_space
+python compare.py --parent exp --filter "8gaussians" --filter2 "lossv_steps1_tau0.0" \
+    --x_key obs_dim --group_by pred_space --log_x --out_dir compare_out/scaling
+
+# Tau sweep
+python compare.py --parent exp --filter "moons_D64_predx_lossv_steps1" \
+    --x_key tau --out_dir compare_out/tau_sweep
+
+# 1-step vs 4-step
+python compare.py --parent exp --filter "moons_D64_predx_lossv_tau0.0" \
+    --x_key steps --out_dir compare_out/steps
+```
+
+---
+
 ## Known Limitations / Approximations
 
 1. **eps-pred one-step**: `eps_to_v` divides by `(1-t)`, which is 0 at t=1. One-step generation uses `t = 1 - T_EPS` (T_EPS=1e-3) to avoid this. The error is negligible but not zero.
