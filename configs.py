@@ -24,6 +24,9 @@ class Config:
     # Path
     tau: float = 0.0                  # target smoothing: x_eff = (1-tau)*x + tau*eps
 
+    # Dataset-specific
+    spiral_sigma: float = 0.01        # spiral_jit only: blur sigma (0.01 = original thin spiral)
+
     # Spaces
     pred_space: str = "x"             # {x, eps, v, u}
     loss_space: str = "v"             # {v, x}  (eps-loss/u-loss not yet implemented)
@@ -56,7 +59,9 @@ def get_args() -> Config:
     parser.add_argument("--n_train",    type=int,   default=50000)
     parser.add_argument("--n_eval",     type=int,   default=2000)
     parser.add_argument("--obs_dim",    type=int,   default=16)
-    parser.add_argument("--tau",        type=float, default=0.0)
+    parser.add_argument("--tau",          type=float, default=0.0)
+    parser.add_argument("--spiral_sigma", type=float, default=0.01,
+                        help="spiral_jit only: blur sigma added after normalization")
     parser.add_argument("--pred_space", type=str,   default="x",
                         choices=["x", "eps", "v", "u"])
     parser.add_argument("--loss_space", type=str,   default="v",
@@ -77,11 +82,14 @@ def get_args() -> Config:
 
 def make_exp_dir(cfg: Config) -> str:
     """Create a unique experiment directory derived from the config."""
+    sigma_tag = (f"_sigma{cfg.spiral_sigma}"
+                 if cfg.dataset == "spiral_jit" and cfg.spiral_sigma != 0.01
+                 else "")
     name = (
         f"{cfg.dataset}_D{cfg.obs_dim}"
         f"_pred{cfg.pred_space}_loss{cfg.loss_space}"
         f"_steps{cfg.steps}_tau{cfg.tau}"
-        f"_seed{cfg.seed}"
+        f"{sigma_tag}_seed{cfg.seed}"
     )
     path = os.path.join(cfg.exp_dir, name)
     os.makedirs(path, exist_ok=True)

@@ -64,38 +64,46 @@ def sample_moons(n: int, rng: np.random.Generator) -> np.ndarray:
     return X.astype(np.float32)
 
 
-def sample_spiral_jit(n: int, rng: np.random.Generator) -> np.ndarray:
+def sample_spiral_jit(n: int, rng: np.random.Generator, sigma: float = 0.01) -> np.ndarray:
     """
     JiT-style 2D spiral dataset.
 
     Underlying distribution:
       θ  ~ Uniform(0, 4π)
       r  = 0.2 * θ
-      x_hat_raw = (r cosθ, r sinθ) + σ η,  σ=0.01, η ~ N(0, I_2)
+      x_hat_raw = (r cosθ, r sinθ) + 0.01 * η,  η ~ N(0, I_2)
 
     Normalization (per-dimension standardization):
-      x_hat = (x_hat_raw − μ) / σ_ref
-    where (μ, σ_ref) are precomputed from a fixed reference pool of 100k samples
-    (seed=12345). This ensures identical normalization across all calls.
+      x_hat = (x_hat_raw − μ_ref) / σ_ref
+    where (μ_ref, σ_ref) are precomputed from a fixed reference pool (sigma=0.01,
+    seed=12345). Normalization is fixed regardless of sigma to keep the spiral's
+    geometric scale consistent.
 
-    Returns shape (n, 2), standardized to ≈ zero mean, unit std.
+    Additional blur (sigma):
+      After normalization, extra Gaussian noise σ * N(0, I_2) is added.
+      sigma=0.01 (default) → thin spiral (original behavior)
+      sigma>0.01            → progressively blurred spiral
+
+    Returns shape (n, 2).
     """
     theta = rng.uniform(0.0, 4.0 * np.pi, n)
     r     = 0.2 * theta
     noise = rng.standard_normal((n, 2)) * 0.01
     x_raw = np.stack([r * np.cos(theta), r * np.sin(theta)], axis=1) + noise
     x_norm = (x_raw - _SPIRAL_MEAN) / (_SPIRAL_STD + 1e-8)
+    if sigma > 0.01:
+        x_norm = x_norm + rng.standard_normal((n, 2)) * sigma
     return x_norm.astype(np.float32)
 
 
-def get_dataset(name: str, n: int, rng: np.random.Generator) -> np.ndarray:
+def get_dataset(name: str, n: int, rng: np.random.Generator, **kwargs) -> np.ndarray:
     """Return n samples from named 2D dataset."""
     if name == "8gaussians":
         return sample_8gaussians(n, rng)
     elif name == "moons":
         return sample_moons(n, rng)
     elif name == "spiral_jit":
-        return sample_spiral_jit(n, rng)
+        return sample_spiral_jit(n, rng, sigma=kwargs.get("spiral_sigma", 0.01))
     else:
         raise ValueError(f"Unknown dataset: {name}")
 

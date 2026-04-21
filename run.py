@@ -41,8 +41,8 @@ def main():
 
     # ---- Data ----
     rng           = np.random.default_rng(cfg.seed)
-    data_2d_train = get_dataset(cfg.dataset, cfg.n_train, rng)
-    data_2d_eval  = get_dataset(cfg.dataset, cfg.n_eval,  rng)
+    data_2d_train = get_dataset(cfg.dataset, cfg.n_train, rng, spiral_sigma=cfg.spiral_sigma)
+    data_2d_eval  = get_dataset(cfg.dataset, cfg.n_eval,  rng, spiral_sigma=cfg.spiral_sigma)
 
     emb          = Embedding(cfg.obs_dim, cfg.latent_dim, cfg.seed)
     data_D_train = emb.embed_numpy(data_2d_train)
