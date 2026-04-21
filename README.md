@@ -256,6 +256,106 @@ python compare.py --parent exp --filter "moons_D64_predx_lossv_tau0.0" \
 
 ---
 
+## JiT-style Toy Experiment
+
+### Concept
+
+The spiral_jit dataset tests whether each prediction space (x, eps, v, u) can learn to generate from a low-dimensional manifold that is embedded in a high-dimensional ambient space.
+
+- The **underlying data** lives in R² (a 2D spiral)
+- The **model only sees** D-dimensional observations x = P x̂, where P ∈ R^{D×2} is a fixed column-orthogonal matrix (P^T P = I₂)
+- **Evaluation and visualization** always project back to 2D via x̂ = P^T x
+
+As D grows, the model must work in higher ambient dimension while the true signal remains 2-dimensional.
+
+### Underlying 2D Distribution
+
+```
+θ  ~ Uniform(0, 4π)
+r  = 0.2 * θ
+x̂_raw = (r cos θ,  r sin θ)  +  0.01 * η,   η ~ N(0, I₂)
+```
+
+**Normalization**: per-dimension standardization using stats from a fixed reference pool of 100,000 samples (seed=12345). This ensures consistent scale across all runs:
+
+```
+x̂ = (x̂_raw − μ_ref) / σ_ref
+```
+
+where (μ_ref, σ_ref) ∈ R² are precomputed constants (see `_SPIRAL_MEAN`, `_SPIRAL_STD` in `datasets.py`). After normalization the spiral has approximately zero mean and unit standard deviation per axis.
+
+### High-Dimensional Embedding
+
+A random matrix A ∈ R^{D×2} is drawn (seeded by `cfg.seed`), then P is computed via QR decomposition:
+
+```
+A ~ N(0, 1)^{D×2}
+Q, _ = QR(A_extended)          # A extended to square (D×D)
+P = Q[:, :2]                   # first 2 columns → P ∈ R^{D×2}, P^T P = I₂
+```
+
+This is handled by the existing `embedding.py:Embedding` class (same as all other datasets).
+
+Embedded observation: `x = P x̂ ∈ R^D` (x̂ never passed to the model).
+
+### Projection for Visualization
+
+```
+x̂_vis = P^T x   ∈ R²
+```
+
+All scatter plots and MMD are computed in this projected 2D space.
+
+### Stage 1: Pred Sweep at D=16 (loss=v, steps=1)
+
+```bash
+python run.py --dataset spiral_jit --obs_dim 16 --pred_space x   --loss_space v --steps 1 --n_layers 5
+python run.py --dataset spiral_jit --obs_dim 16 --pred_space eps --loss_space v --steps 1 --n_layers 5
+python run.py --dataset spiral_jit --obs_dim 16 --pred_space v   --loss_space v --steps 1 --n_layers 5
+python run.py --dataset spiral_jit --obs_dim 16 --pred_space u   --loss_space v --steps 1 --n_layers 5
+```
+
+Multi-pred comparison grid (4 panels):
+
+```bash
+python compare.py \
+    --parent exp --filter "spiral_jit_D16" --filter2 "lossv_steps1_tau0.0" \
+    --x_key pred_space --plot_grids \
+    --out_dir compare_out/spiral_predcomp_D16
+```
+
+Output: `compare_out/spiral_predcomp_D16/comparison_grid.png`
+
+### D-Scaling Experiment
+
+Sweeps D ∈ {2, 8, 16, 64, 256} for all pred_spaces, then plots val_x_mse, val_v_mse, MMD vs D (one line per pred_space):
+
+```bash
+# Run
+for D in 2 8 16 64 256; do
+  for PS in x eps v u; do
+    python run.py --dataset spiral_jit --obs_dim $D --pred_space $PS \
+        --loss_space v --steps 1 --n_layers 5
+  done
+done
+
+# Plot
+python compare.py \
+    --parent exp --filter "spiral_jit" --filter2 "lossv_steps1_tau0.0" \
+    --x_key obs_dim --group_by pred_space --log_x \
+    --out_dir compare_out/spiral_dscaling
+```
+
+Outputs:
+- `compare_out/spiral_dscaling/metric_vs_obs_dim.png` — val_x_mse, val_v_mse, MMD vs D (grouped by pred_space)
+- `compare_out/spiral_dscaling/summary.csv` — full results table
+
+### Goal
+
+Measure how prediction space robustness degrades with ambient dimension D, while the intrinsic data dimension remains fixed at 2. Expected behavior: as D increases, the task becomes harder because the signal is sparser, but good prediction spaces should degrade gracefully.
+
+---
+
 # 基本設定と変換
 
 ## パス定義

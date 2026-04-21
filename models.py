@@ -32,7 +32,7 @@ class SinusoidalTimeEmbedding(nn.Module):
         self.register_buffer("freqs", freqs)   # (half,)
         self.proj = nn.Sequential(
             nn.Linear(emb_dim, emb_dim),
-            nn.SiLU(),
+            nn.ReLU(),
         )
 
     def forward(self, t: torch.Tensor) -> torch.Tensor:
@@ -66,7 +66,7 @@ class StandardMLP(nn.Module):
         in_dim = obs_dim + time_emb_dim
         layers = []
         for _ in range(n_layers - 1):
-            layers += [nn.Linear(in_dim, hidden_dim), nn.SiLU()]
+            layers += [nn.Linear(in_dim, hidden_dim), nn.ReLU()]
             in_dim = hidden_dim
         layers.append(nn.Linear(in_dim, obs_dim))
         self.net = nn.Sequential(*layers)
@@ -103,7 +103,7 @@ class UModel(nn.Module):
         in_dim = obs_dim + 2 * time_emb_dim
         layers = []
         for _ in range(n_layers - 1):
-            layers += [nn.Linear(in_dim, hidden_dim), nn.SiLU()]
+            layers += [nn.Linear(in_dim, hidden_dim), nn.ReLU()]
             in_dim = hidden_dim
         layers.append(nn.Linear(in_dim, obs_dim))
         self.net = nn.Sequential(*layers)

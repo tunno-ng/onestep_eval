@@ -52,7 +52,7 @@ def get_args() -> Config:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--dataset",    type=str,   default="8gaussians",
-                        choices=["8gaussians", "moons"])
+                        choices=["8gaussians", "moons", "spiral_jit"])
     parser.add_argument("--n_train",    type=int,   default=50000)
     parser.add_argument("--n_eval",     type=int,   default=2000)
     parser.add_argument("--obs_dim",    type=int,   default=16)

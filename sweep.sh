@@ -41,6 +41,17 @@ for TAU in 0.0 0.1 0.2 0.3; do
 done
 
 echo ""
+echo "=== 7. Spiral JiT — D-scaling: pred in {x,v,u} x loss in {v,x}, D in {2,16,64,256}, steps=1 ==="
+for D in 2 16 64 256; do
+    for PS in x v u; do
+        for LS in v x; do
+            python run.py --dataset spiral_jit --obs_dim $D --pred_space $PS --loss_space $LS --steps 1 \
+                --n_layers 5 --n_iters $NITERS --n_eval $NEVAL
+        done
+    done
+done
+
+echo ""
 echo "=== Comparison plots ==="
 # Group A comparison grid
 python compare.py \
@@ -65,6 +76,30 @@ python compare.py \
     --parent exp --filter "moons_D64_predx_lossv_steps1" \
     --x_key tau \
     --out_dir compare_out/tau_sweep
+
+# Spiral JiT: pred comparison grid at D=16, loss=v
+python compare.py \
+    --parent exp --filter "spiral_jit_D16" --filter2 "lossv_steps1_tau0.0" \
+    --x_key pred_space --plot_grids \
+    --out_dir compare_out/spiral_predcomp_D16_lossv
+
+# Spiral JiT: pred comparison grid at D=16, loss=x
+python compare.py \
+    --parent exp --filter "spiral_jit_D16" --filter2 "lossx_steps1_tau0.0" \
+    --x_key pred_space --plot_grids \
+    --out_dir compare_out/spiral_predcomp_D16_lossx
+
+# Spiral JiT: D-scaling, loss=v, grouped by pred_space
+python compare.py \
+    --parent exp --filter "spiral_jit" --filter2 "lossv_steps1_tau0.0" \
+    --x_key obs_dim --group_by pred_space --log_x \
+    --out_dir compare_out/spiral_dscaling_lossv
+
+# Spiral JiT: D-scaling, loss=x, grouped by pred_space
+python compare.py \
+    --parent exp --filter "spiral_jit" --filter2 "lossx_steps1_tau0.0" \
+    --x_key obs_dim --group_by pred_space --log_x \
+    --out_dir compare_out/spiral_dscaling_lossx
 
 echo ""
 echo "=== Done. Key outputs ==="
